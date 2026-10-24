@@ -1,49 +1,54 @@
-const BASE = 'http://localhost:3000/api'
+import axios from 'axios';
 
-const TO_API = { 'To Do': 'TODO', 'In Progress': 'IN_PROGRESS', Done: 'DONE' }
-const FROM_API = { TODO: 'To Do', IN_PROGRESS: 'In Progress', DONE: 'Done' }
+export const TOKEN_KEY = 'accessToken';
+const baseURL = 'http://localhost:3001';
 
-// server todo -> shape your UI already uses
-const fromApi = (todo) => ({ ...todo, status: FROM_API[todo.status] })
+export const api = axios.create({ baseURL, withCredentials: true });
 
-// UI changes -> shape the server expects
-const toApi = (changes) => {
-  const copy = { ...changes }
-  if (copy.status) copy.status = TO_API[copy.status]
-  return copy
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+let refreshing = null;
+
+function refreshAccessToken() {
+  if (!refreshing) {
+    refreshing = axios
+      .post(`${baseURL}/auth/refresh`, null, { withCredentials: true })
+      .then((res) => {
+        localStorage.setItem(TOKEN_KEY, res.data.accessToken);
+        return res.data.accessToken;
+      })
+      .finally(() => {
+        refreshing = null;
+      });
+  }
+  return refreshing;
 }
 
-async function request(path, options = {}) {
-  const res = await fetch(BASE + path, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  })
-  if (!res.ok) throw new Error(`Request failed (${res.status})`)
-  if (res.status === 204) return null
-  return res.json()
-}
+api.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const original = error.config;
+    const isAuthCall = original?.url?.startsWith('/auth/');
 
-export const getTasks = async () => (await request('/todos')).map(fromApi)
+    if (error.response?.status === 401 && original && !original._retry && !isAuthCall) {
+      original._retry = true;
+      try {
+        const token = await refreshAccessToken();
+        original.headers.Authorization = `Bearer ${token}`;
+        return api(original);
+      } catch {
+        localStorage.removeItem(TOKEN_KEY);
+        window.location.reload();
+      }
+    }
+    return Promise.reject(error);
+  },
+);
 
-export const createTask = async (title) =>
-  fromApi(
-    await request('/todos', {
-      method: 'POST',
-      body: JSON.stringify({ title, status: 'TODO' }),
-    })
-  )
-
-export const updateTask = async (id, changes) =>
-  fromApi(
-    await request(`/todos/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(toApi(changes)),
-    })
-  )
-
-export const deleteTask = (id) => request(`/todos/${id}`, { method: 'DELETE' })
-
-export const getProfile = () => request('/profile')
-
-export const updateProfile = (changes) =>
-  request('/profile', { method: 'PATCH', body: JSON.stringify(changes) })
+export default api;
