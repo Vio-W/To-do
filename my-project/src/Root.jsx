@@ -1,0 +1,22 @@
+import { useState } from "react";
+import App from "./App.jsx";
+import LoginForm from "./components/LoginForm.jsx";
+import { TOKEN_KEY } from "./api";
+
+export default function Root() {
+  const [loggedIn, setLoggedIn] = useState(!!localStorage.getItem(TOKEN_KEY));
+
+  function logout() {
+    localStorage.removeItem(TOKEN_KEY);
+    setLoggedIn(false);
+  }
+
+  if (!loggedIn) return <LoginForm onLoggedIn={() => setLoggedIn(true)} />;
+
+  return (
+    <>
+      <button onClick={logout}>Log out</button>
+      <App />
+    </>
+  );
+}
