@@ -3,6 +3,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as argon2 from 'argon2';
@@ -11,7 +12,10 @@ import { SignupDto } from './dto/signup.dto';
 
 @Injectable()
 export class AuthService {
-  constructor(@InjectRepository(User) private users: Repository<User>) {}
+  constructor(
+    @InjectRepository(User) private users: Repository<User>,
+    private jwt: JwtService,
+  ) {}
 
   async signup(dto: SignupDto) {
     const email = dto.email.trim().toLowerCase();
@@ -30,5 +34,13 @@ export class AuthService {
     if (!user || !(await argon2.verify(user.passwordHash, pw)))
       throw new UnauthorizedException('Invalid credentials');
     return user;
+  }
+
+  async login(user: User) {
+    const payload = { sub: user.id, email: user.email, role: user.role };
+    return {
+      accessToken: await this.jwt.signAsync(payload),
+      user: { id: user.id, email: user.email, role: user.role },
+    };
   }
 }
