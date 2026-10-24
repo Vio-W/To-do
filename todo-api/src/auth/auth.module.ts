@@ -10,6 +10,7 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtStrategy } from './jwt.strategy';
 import { RefreshToken } from './refresh-token.entity';
+import { RolesGuard } from './roles.guard';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { RefreshToken } from './refresh-token.entity';
     AuthService,
     JwtStrategy,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AuthModule {}

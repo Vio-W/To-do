@@ -8,6 +8,7 @@ import { AppService } from "./app.service";
 import { TodosModule } from "./todos/todos.module";
 import { ProfileModule } from "./profile/profile.module";
 import { AuthModule } from "./auth/auth.module";
+import { AdminModule } from "./admin/admin.module";
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { AuthModule } from "./auth/auth.module";
     TodosModule,
     ProfileModule,
     AuthModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [
