@@ -1,36 +1,37 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { Todo } from "./entities/todo.entity";
-import { CreateTodoDto } from "./dto/create-todo.dto";
-import { UpdateTodoDto } from "./dto/update-todo.dto";
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { CreateTodoDto } from './dto/create-todo.dto';
+import { UpdateTodoDto } from './dto/update-todo.dto';
+import { Todo } from './entities/todo.entity';
 
 @Injectable()
 export class TodosService {
-  constructor(
-    @InjectRepository(Todo)
-    private repo: Repository<Todo>,
-  ) {}
+  constructor(@InjectRepository(Todo) private todos: Repository<Todo>) {}
 
-  findAll() {
-    return this.repo.find({ order: { id: "ASC" } });
+  create(dto: CreateTodoDto, userId: string) {
+    return this.todos.save(this.todos.create({ ...dto, ownerId: userId }));
   }
 
-  create(dto: CreateTodoDto) {
-    return this.repo.save(this.repo.create(dto));
+  findAll(userId: string) {
+    return this.todos.find({ where: { ownerId: userId } });
   }
 
-  async update(id: number, dto: UpdateTodoDto) {
-    const todo = await this.repo.findOneBy({ id });
-    if (!todo) throw new NotFoundException(`Todo ${id} not found`);
+  async findOne(id: number, userId: string) {
+    const todo = await this.todos.findOne({ where: { id, ownerId: userId } });
+    if (!todo) throw new NotFoundException('Todo not found');
+    return todo;
+  }
+
+  async update(id: number, dto: UpdateTodoDto, userId: string) {
+    const todo = await this.findOne(id, userId);
     Object.assign(todo, dto);
-    return this.repo.save(todo);
+    return this.todos.save(todo);
   }
 
-  async remove(id: number) {
-    const result = await this.repo.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException(`Todo ${id} not found`);
-    }
+  async remove(id: number, userId: string) {
+    const todo = await this.findOne(id, userId);
+    await this.todos.remove(todo);
+    return { deleted: true };
   }
 }
