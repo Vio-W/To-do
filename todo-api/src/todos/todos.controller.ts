@@ -1,33 +1,48 @@
 import {
-  Body, Controller, Delete, Get, HttpCode, Param,
-  ParseIntPipe, Patch, Post,
-} from "@nestjs/common";
-import { TodosService } from "./todos.service";
-import { CreateTodoDto } from "./dto/create-todo.dto";
-import { UpdateTodoDto } from "./dto/update-todo.dto";
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
+import { CurrentUser, type AuthUser } from '../auth/current-user.decorator';
+import { CreateTodoDto } from './dto/create-todo.dto';
+import { UpdateTodoDto } from './dto/update-todo.dto';
+import { TodosService } from './todos.service';
 
-@Controller("todos")
+@Controller('todos')
 export class TodosController {
-  constructor(private readonly todos: TodosService) {}
-
-  @Get()
-  findAll() {
-    return this.todos.findAll();
-  }
+  constructor(private readonly todosService: TodosService) {}
 
   @Post()
-  create(@Body() dto: CreateTodoDto) {
-    return this.todos.create(dto); // 201 by default
+  create(@Body() dto: CreateTodoDto, @CurrentUser() user: AuthUser) {
+    return this.todosService.create(dto, user.id);
   }
 
-  @Patch(":id")
-  update(@Param("id", ParseIntPipe) id: number, @Body() dto: UpdateTodoDto) {
-    return this.todos.update(id, dto);
+  @Get()
+  findAll(@CurrentUser() user: AuthUser) {
+    return this.todosService.findAll(user.id);
   }
 
-  @Delete(":id")
-  @HttpCode(204)
-  remove(@Param("id", ParseIntPipe) id: number) {
-    return this.todos.remove(id); // the return is the slide gap
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
+    return this.todosService.findOne(id, user.id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateTodoDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.todosService.update(id, dto, user.id);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: AuthUser) {
+    return this.todosService.remove(id, user.id);
   }
 }
