@@ -1,13 +1,17 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 
 export const TOKEN_KEY = 'accessToken';
 const baseURL = 'http://localhost:3001';
 
-export const api = axios.create({ baseURL, withCredentials: true });
+export const api = axios.create({
+  baseURL,
+  withCredentials: true,
+});
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem(TOKEN_KEY);
   if (token) {
+    config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -20,8 +24,9 @@ function refreshAccessToken() {
     refreshing = axios
       .post(`${baseURL}/auth/refresh`, null, { withCredentials: true })
       .then((res) => {
-        localStorage.setItem(TOKEN_KEY, res.data.accessToken);
-        return res.data.accessToken;
+        const token = res.data.accessToken;
+        localStorage.setItem(TOKEN_KEY, token);
+        return token;
       })
       .finally(() => {
         refreshing = null;
@@ -40,6 +45,7 @@ api.interceptors.response.use(
       original._retry = true;
       try {
         const token = await refreshAccessToken();
+        original.headers = original.headers ?? {};
         original.headers.Authorization = `Bearer ${token}`;
         return api(original);
       } catch {
@@ -50,5 +56,14 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+export const getProfile = () => api.get('/profile');
+export const updateProfile = (payload) => api.patch('/profile', payload);
+
+export const getTasks = () => api.get('/todos');
+export const createTask = (title, extras = {}) =>
+  api.post('/todos', { title, status: 'To Do', ...extras });
+export const updateTask = (id, changes) => api.patch(`/todos/${id}`, changes);
+export const deleteTask = (id) => api.delete(`/todos/${id}`);
 
 export default api;

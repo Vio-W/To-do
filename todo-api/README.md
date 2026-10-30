@@ -31,6 +31,13 @@
 $ npm install
 ```
 
+Copy `.env.example` to `.env` and set the database connection values. `DB_HOST`,
+`DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, and `JWT_SECRET` are required.
+`PORT` defaults to `3001` and `JWT_EXPIRES_IN_SECONDS` defaults to `900`.
+Ports must be between 1 and 65535, expiration must be a positive integer, and
+`JWT_SECRET` must contain at least 32 bytes; generate a unique random value for
+each environment.
+
 ## Compile and run the project
 
 ```bash

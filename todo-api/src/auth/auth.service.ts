@@ -82,8 +82,17 @@ export class AuthService {
     if (row.expiresAt < new Date())
       throw new UnauthorizedException('Invalid refresh token');
 
-    row.revokedAt = new Date();
-    await this.refreshTokens.save(row);
+    const revocation = await this.refreshTokens.update(
+      { id: row.id, revokedAt: IsNull() },
+      { revokedAt: new Date() },
+    );
+    if (revocation.affected !== 1) {
+      await this.refreshTokens.update(
+        { userId: row.userId, revokedAt: IsNull() },
+        { revokedAt: new Date() },
+      );
+      throw new UnauthorizedException('Invalid refresh token');
+    }
 
     const user = await this.users.findOneBy({ id: row.userId });
     if (!user) throw new UnauthorizedException('Invalid refresh token');
