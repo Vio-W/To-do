@@ -1,8 +1,8 @@
-import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { Profile } from "./entities/profile.entity";
-import { UpdateProfileDto } from "./dto/update-profile.dto";
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Profile } from './entities/profile.entity';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class ProfileService {
@@ -11,21 +11,36 @@ export class ProfileService {
     private repo: Repository<Profile>,
   ) {}
 
-  async get() {
-    const existing = await this.repo.find({ take: 1 });
-    if (existing.length > 0) return existing[0];
-    return this.repo.save(
-      this.repo.create({
-        username: "vi",
-        displayName: "Vi",
-        email: "vi@example.com",
-      }),
-    );
+  private defaultProfile(userId: string, email: string) {
+    const username = email.split('@')[0];
+    return {
+      userId,
+      username,
+      displayName: username,
+      email,
+    };
   }
 
-  async update(dto: UpdateProfileDto) {
-    const profile = await this.get();
-    Object.assign(profile, dto);
-    return this.repo.save(profile);
+  async get(userId: string, email: string) {
+    const profile = await this.repo.findOneBy({ userId });
+    return profile ?? this.repo.create(this.defaultProfile(userId, email));
+  }
+
+  async update(dto: UpdateProfileDto, userId: string, email: string) {
+    const query = this.repo
+      .createQueryBuilder()
+      .insert()
+      .into(Profile)
+      .values({ ...this.defaultProfile(userId, email), ...dto });
+
+    const fieldsToUpdate = Object.keys(dto);
+    if (fieldsToUpdate.length > 0) {
+      query.orUpdate(fieldsToUpdate, ['userId']);
+    } else {
+      query.orIgnore();
+    }
+
+    await query.execute();
+    return this.repo.findOneByOrFail({ userId });
   }
 }
